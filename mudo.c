@@ -215,39 +215,39 @@ void handleInput(AppState *app){
 
 }
 
-void render(AppState *app){
+void render(AppState *app,Font font){
   Vector2 mouse = GetMousePosition();
-  DrawText("MUDO", 170, 15, 20, WHITE);
+  DrawTextEx(font, "MUDO", (Vector2){170,15}, 18, 1, WHITE);
 
   BeginScissorMode(0, 50, windowWidth, windowHeight-110);
   for(int i = 0; i<app->count;i++){
     int y= (i*30)+50 - app->scrollOffset;
     Color c = (i==app->selected) ? PINK :BLACK;
     DrawRectangle(10,y-2, windowWidth-20, 25, WHITE);
-    DrawText(app->todos[i].done? "DONE" : "TODO", 20, y+2, 18, c);
-    DrawText(app->todos[i].text, 80, y+2, 18, c);
+    DrawTextEx(font,app->todos[i].done? "DONE" : "TODO",(Vector2){20,y+2}, 18,1, c);
+    DrawTextEx(font,app->todos[i].text,(Vector2){80,y+2}, 18, 1, c);
     if( app->todos[i].done){
       DrawRectangle(80,y+8, windowWidth-130, 2, RED);
     }
     Rectangle DelBtn = {365,y+2,20,18};
     bool delhover = CheckCollisionPointRec(mouse, DelBtn);
     DrawRectangleRec(DelBtn, delhover? GRAY : BLACK);
-    DrawText("X", DelBtn.x+4, DelBtn.y+2, 17,  WHITE);
+    DrawTextEx(font,"X",(Vector2){DelBtn.x+4, DelBtn.y+2}, 17, 1, WHITE);
 
   }
   EndScissorMode();
 
   DrawRectangle(0, windowHeight-60, windowWidth, 80, WHITE);
   if (app->inputLen<=0) {
-    DrawText("enter todo...", 30, windowHeight-40, 18, GRAY);
+    DrawTextEx(font,"enter todo...", (Vector2){30, windowHeight-40}, 18, 1, GRAY);
   }
 
-  DrawText(app->input, 30, windowHeight-40, 18, BLACK);
+  DrawTextEx(font,app->input,(Vector2){30,windowHeight-40}, 18, 1, BLACK);
 
   Rectangle doneBtn = {340,windowHeight -40,50,20};
   bool donehover = CheckCollisionPointRec(mouse, doneBtn);
   DrawRectangleRec(doneBtn, donehover? GRAY : BLACK);
-  DrawText("done", doneBtn.x+4, doneBtn.y+2, 18,WHITE);
+  DrawTextEx(font,"done", (Vector2){doneBtn.x+4, doneBtn.y+2}, 18, 1, WHITE);
 }
 
 int main() {
@@ -255,9 +255,12 @@ int main() {
   InitWindow(windowWidth, windowHeight, "MUDO");
   SetTargetFPS(60);
 
+  Font font = LoadFontEx("assets/fonts/Inter-Regular.ttf", 18,0,0);
+
   AppState app = {0};
   app.selected = -1;
   app.scrollOffset = 0;
+
 
   loadTodos(&app);
 
@@ -265,12 +268,13 @@ int main() {
     handleInput(&app);
     BeginDrawing();
     ClearBackground(BLACK);
-    render(&app);
+    render(&app,font);
     EndDrawing();
   }
   for(int i=0;i< app.count;i++){
     free(app.todos[i].text);
   }
   free(app.todos);
+  UnloadFont(font);
   CloseWindow();
 }
