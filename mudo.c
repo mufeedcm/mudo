@@ -1,20 +1,20 @@
 /*
-* MUDO  - A simple GUI todo application written in C using raylib
-* Copyright (C) 2025 mufeedcm
-*
-* This program is free software: you can redistribute it and/or modify
-* it under the terms of the GNU General Public License as published by
-* the Free Software Foundation, either version 3 of the License,
-* or (at your option) any later version.
-* 
-* This program is distributed in the hope that it will be useful,
-* but WITHOUT ANY WARRANTY; without even the implied warranty of
-* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-* GNU General Public License for more details.
-* 
-* You should have received a copy of the GNU General Public License
-* along with this program. If not, see <https://www.gnu.org/licenses/>. 
-*/
+ * MUDO  - A simple GUI todo application written in C using raylib
+ * Copyright (C) 2025 mufeedcm
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License,
+ * or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>. 
+ */
 
 #include "raylib.h"
 #include <stdio.h>
@@ -129,29 +129,35 @@ void handleInput(AppState *app){
   float wheel = GetMouseWheelMove();
   app->scrollOffset -= wheel*20;
   if(app->scrollOffset < 0){ app->scrollOffset = 0;}
-  int listHeight = app->count*30;
+  int listHeight = app->count*40;
   int visibleHeight = windowHeight- 110;
   int maxScroll = listHeight - visibleHeight;
   if(maxScroll<0){ maxScroll = 0;}
   if(app->scrollOffset > maxScroll){app->scrollOffset = maxScroll;}
 
+  // state button
   for(int i = 0; i<app->count;i++){
-    int y= (i*30)+50 - app->scrollOffset;
-    Rectangle stateBtn = {20,y,50,20};
-    bool statehover = CheckCollisionPointRec(mouse, stateBtn);
-    if(statehover &&  IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
+    int y= (i*40)+50 - app->scrollOffset;
+    if(CheckCollisionPointRec(mouse, (Rectangle){10,y,65,30}) &&  IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
       app->todos[i].done = !app->todos[i].done;
       saveTodos(app);
       break;
     }
   }
+
+  // lists
   for(int i = 0; i<app->count;i++){
-    int y= (i*30)+50 - app->scrollOffset;
-    Rectangle DelBtn = {365,y,20,20};
-    bool delhover = CheckCollisionPointRec(mouse, DelBtn);
-    if(delhover &&  IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
+    int y= (i*40)+50 - app->scrollOffset;
+    if(CheckCollisionPointRec(mouse,(Rectangle){75,y,windowWidth-115,30})){ app->selected = -1;}
+  }
+
+  // delete button
+  for(int i = 0; i<app->count;i++){
+    int y= (i*40)+50 - app->scrollOffset;
+    if(CheckCollisionPointRec(mouse, (Rectangle){360,y,30,30}) &&  IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
       app->selected =i;
       deleteTodo(app,app->selected);
+      app->selected = -1;
       break;
     }
   }
@@ -201,10 +207,8 @@ void handleInput(AppState *app){
     }
   }
 
-  Rectangle doneBtn = {340,windowHeight -40,50,20};
-  bool donehover = CheckCollisionPointRec(mouse, doneBtn);
-
-  if(donehover &&  IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
+  //done button
+  if(CheckCollisionPointRec(mouse, (Rectangle){340,windowHeight -60,62,60}) &&  IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
     if(app->inputLen >0){
       addTodo(app,app->input);
       saveTodos(app);
@@ -221,33 +225,42 @@ void render(AppState *app,Font font){
 
   BeginScissorMode(0, 50, windowWidth, windowHeight-110);
   for(int i = 0; i<app->count;i++){
-    int y= (i*30)+50 - app->scrollOffset;
-    Color c = (i==app->selected) ? PINK :BLACK;
-    DrawRectangle(10,y-2, windowWidth-20, 25, WHITE);
-    DrawTextEx(font,app->todos[i].done? "DONE" : "TODO",(Vector2){20,y+2}, 18,1, c);
-    DrawTextEx(font,app->todos[i].text,(Vector2){80,y+2}, 18, 1, c);
+    int y= (i*40)+50 - app->scrollOffset;
+
+    // state button
+    DrawRectangleRounded((Rectangle){10,y,65,30}, 0.4, 16, CheckCollisionPointRec(mouse, (Rectangle){10,y,65,30})? GRAY : DARKGRAY);
+    DrawRectangle(70, y, 5, 30, CheckCollisionPointRec(mouse, (Rectangle){10,y,65,30})?GRAY:DARKGRAY);
+    DrawTextEx(font,app->todos[i].done? "DONE" : "TODO",(Vector2){20,y+6}, 18,1, app->todos[i].done? ORANGE : WHITE);
+
+    // lists
+    DrawRectangle(75, y, windowWidth-115, 30,(CheckCollisionPointRec(mouse,(Rectangle){75,y,windowWidth-115,30})||(i==app->selected)) ? DARKGRAY :(Color){25,25,25,255});
+    DrawTextEx(font,app->todos[i].text,(Vector2){80,y+6}, 18, 1, WHITE);
+
+    // state strike
     if( app->todos[i].done){
-      DrawRectangle(80,y+8, windowWidth-130, 2, RED);
+      DrawRectangle(15,y+16, windowWidth-60, 1, MAROON);
     }
-    Rectangle DelBtn = {365,y+2,20,18};
-    bool delhover = CheckCollisionPointRec(mouse, DelBtn);
-    DrawRectangleRec(DelBtn, delhover? GRAY : BLACK);
-    DrawTextEx(font,"X",(Vector2){DelBtn.x+4, DelBtn.y+2}, 17, 1, WHITE);
+
+    // delete button
+    DrawRectangleRounded((Rectangle){360,y,30,30}, 0.4, 16, CheckCollisionPointRec(mouse, (Rectangle){360,y,30,30})? GRAY : DARKGRAY);
+    DrawRectangle(360, y, 5, 30, CheckCollisionPointRec(mouse, (Rectangle){360,y,30,30})?GRAY:DARKGRAY);
+    DrawTextEx(font,"X",(Vector2){(Rectangle){360,y,30,30}.x+10, (Rectangle){360,y,30,30}.y+6}, 18, 1, WHITE);
 
   }
   EndScissorMode();
 
-  DrawRectangle(0, windowHeight-60, windowWidth, 80, WHITE);
+  DrawRectangle(0, windowHeight-60, windowWidth, 60, (Color){25,25,25,255});
   if (app->inputLen<=0) {
     DrawTextEx(font,"enter todo...", (Vector2){30, windowHeight-40}, 18, 1, GRAY);
   }
 
-  DrawTextEx(font,app->input,(Vector2){30,windowHeight-40}, 18, 1, BLACK);
+  // done button
+  DrawTextEx(font,app->input,(Vector2){30,windowHeight-40}, 18, 1, WHITE);
+  DrawRectangle(0,windowHeight-61,windowWidth,1, GRAY);
+  DrawRectangle(339,windowHeight-61,1,60, GRAY);
+  DrawRectangle(340,windowHeight-60,60,60, CheckCollisionPointRec(mouse, (Rectangle){340,windowHeight -60,62,60})? DARKGRAY : BLACK);
+  DrawTextEx(font,"done", (Vector2){(Rectangle){340,windowHeight -60,62,60}.x+10, (Rectangle){340,windowHeight -60,62,60}.y+18}, 18, 1, WHITE);
 
-  Rectangle doneBtn = {340,windowHeight -40,50,20};
-  bool donehover = CheckCollisionPointRec(mouse, doneBtn);
-  DrawRectangleRec(doneBtn, donehover? GRAY : BLACK);
-  DrawTextEx(font,"done", (Vector2){doneBtn.x+4, doneBtn.y+2}, 18, 1, WHITE);
 }
 
 int main() {
