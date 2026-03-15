@@ -1,5 +1,5 @@
 TARGET = mudo
-SRC = mudo.c
+SRC = main.c
 
 all:
 		gcc -std=c99 -Wall -Wextra -O2 -g $(SRC) -o $(TARGET) -lraylib -lm -lpthread -ldl -lrt -lX11
