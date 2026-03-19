@@ -16,11 +16,20 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>. 
  */
 
-#include "raylib.h"
+#include "SDL2/SDL.h"
+#include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <wchar.h>
+
+static const SDL_Color WHITE      = {255,255,255,255};
+static const SDL_Color BLACK      = {0,0,0,255};
+static const SDL_Color GRAY       = {120,120,120,255};
+static const SDL_Color DARK_GRAY  = {40,40,40,255};
+static const SDL_Color RED        = {255,0,0,255};
+static const SDL_Color GREEN      = {0,255,0,255};
 
 typedef struct {
   char *text;
@@ -40,6 +49,13 @@ typedef struct {
   int scrollOffset;
 }AppState;
 
+typedef struct {
+  TTF_Font *small;
+  TTF_Font *normal;
+  TTF_Font *large;
+
+}Fonts;
+
 int windowHeight =  500;
 int windowWidth = 400;
 
@@ -48,7 +64,6 @@ void saveTodos(AppState *app){
   if(!home){return;}
   char path[512];
   snprintf(path, sizeof(path), "%s/.mudo.txt",home);
-
   FILE* file;
   file = fopen(path,"w");
   if(file!=NULL){
@@ -123,171 +138,212 @@ void loadTodos(AppState *app){
   }
 }
 
-void handleInput(AppState *app){
-  Vector2 mouse = GetMousePosition();
+void handleInput(AppState *app, SDL_Event *event){
 
-  float wheel = GetMouseWheelMove();
-  app->scrollOffset -= wheel*20;
-  if(app->scrollOffset < 0){ app->scrollOffset = 0;}
-  int listHeight = app->count*40;
-  int visibleHeight = windowHeight- 110;
-  int maxScroll = listHeight - visibleHeight;
-  if(maxScroll<0){ maxScroll = 0;}
-  if(app->scrollOffset > maxScroll){app->scrollOffset = maxScroll;}
+  if(event->type == SDL_MOUSEBUTTONDOWN){
+    SDL_Point mouse; 
+    SDL_GetMouseState(&mouse.x, &mouse.y);
 
-  // state button
-  for(int i = 0; i<app->count;i++){
-    int y= (i*40)+50 - app->scrollOffset;
-    if(CheckCollisionPointRec(mouse, (Rectangle){10,y,65,30}) &&  IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
-      app->todos[i].done = !app->todos[i].done;
-      saveTodos(app);
-      break;
-    }
-  }
+    for(int i = 0; i<app->count;i++){
+      int y= (i*40)+50 - app->scrollOffset;
+      SDL_Rect state_btn = {10,y,65,30};
+      SDL_Rect item = {75,y,windowWidth-115,30};
+      SDL_Rect del_btn = {360,y,30,30};
 
-  // lists
-  for(int i = 0; i<app->count;i++){
-    int y= (i*40)+50 - app->scrollOffset;
-    if(CheckCollisionPointRec(mouse,(Rectangle){75,y,windowWidth-115,30})){ app->selected = -1;}
-  }
-
-  // delete button
-  for(int i = 0; i<app->count;i++){
-    int y= (i*40)+50 - app->scrollOffset;
-    if(CheckCollisionPointRec(mouse, (Rectangle){360,y,30,30}) &&  IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
-      app->selected =i;
-      deleteTodo(app,app->selected);
-      app->selected = -1;
-      break;
-    }
-  }
-  int key = GetCharPressed();
-  while ( key >0){
-    if(key>=32&&key<=126 && app->inputLen<1023){
-      if(app->inputLen<1023){
-        app->input[app->inputLen++] = (char)key;
-        app->input[app->inputLen] = '\0';
+      if(SDL_PointInRect(&mouse,&state_btn)){
+        app->todos[i].done = !app->todos[i].done;
+        saveTodos(app);
+        break;
+      }
+      if(SDL_PointInRect(&mouse,&item)){
+        app->selected = -1;
+      }
+      if(SDL_PointInRect(&mouse,&del_btn)){
+        app->selected =i;
+        deleteTodo(app,app->selected);
+        app->selected = -1;
+        break;
       }
     }
-    key = GetCharPressed();
+
+    SDL_Rect done_btn = {340,windowHeight -60,62,60};
+    if(SDL_PointInRect(&mouse,&done_btn)){
+      if(app->inputLen >0){
+        addTodo(app,app->input);
+        saveTodos(app);
+        app->inputLen=0;
+        app->input[0] = '\0';
+      }
+    }
   }
-  if(IsKeyPressed(KEY_BACKSPACE)){
-    if(app->inputLen>0){
-      app->input[--app->inputLen] = '\0' ;
+  if(event->type==SDL_MOUSEWHEEL){
+    app->scrollOffset -= event->wheel.y*20;
+    if(app->scrollOffset <0){
+      app->scrollOffset = 0;
     }
   }
 
-  if(IsKeyPressed(KEY_ENTER)){
-    if(app->inputLen >0){
-      addTodo(app,app->input);
-      saveTodos(app);
-      app->inputLen=0;
-      app->input[0] = '\0';
-    }
 
-  }
-  if(IsKeyPressed(KEY_DELETE) && app->selected>=0){
-    deleteTodo(app,app->selected);
-  }
-  if(IsKeyPressed(KEY_DOWN)&&app->selected<app->count-1){
-    app->selected++;
-  }
-
-  if(IsKeyPressed(KEY_UP)&&app->selected>0){
-    app->selected--;
-  }
-
-  bool shifPress = IsKeyDown(KEY_LEFT_SHIFT) || IsKeyDown(KEY_RIGHT_SHIFT);
-  if(IsKeyPressed(KEY_TAB)){
-    if (!shifPress && app->selected<app->count-1) {
-      app->selected++;
-    }
-    if (shifPress && app->selected>0) {
-      app->selected--;
+  if(event->type == SDL_TEXTINPUT){
+    int len = strlen(event->text.text);
+    if(app->inputLen + len <1024){
+      memcpy(app->input + app->inputLen, event->text.text, len);
+      app->inputLen +=len;
+      app->input[app->inputLen] = '\0';
     }
   }
-
-  //done button
-  if(CheckCollisionPointRec(mouse, (Rectangle){340,windowHeight -60,62,60}) &&  IsMouseButtonPressed(MOUSE_LEFT_BUTTON)){
-    if(app->inputLen >0){
-      addTodo(app,app->input);
-      saveTodos(app);
-      app->inputLen=0;
-      app->input[0] = '\0';
+  if(event->type ==SDL_KEYDOWN){
+    switch(event->key.keysym.sym){
+      case SDLK_BACKSPACE:
+        if(app->inputLen>0){
+          app->input[--app->inputLen] = '\0' ;
+        }
+        break;
+      case SDLK_RETURN:
+      case SDLK_KP_ENTER:
+        if(app->inputLen >0){
+          addTodo(app,app->input);
+          saveTodos(app);
+          app->inputLen=0;
+          app->input[0] = '\0';
+        }
+        break;
+      case SDLK_DELETE:
+        if(app->selected>=0){
+          deleteTodo(app,app->selected);
+        }
+        break;
+      case SDLK_DOWN:
+        if(app->selected<app->count-1){
+          app->selected++;
+        }
+        break;
+      case SDLK_UP:
+        if(app->selected>0){
+          app->selected--;
+        }
+        break;
+      case SDLK_TAB:
+        if(event->key.keysym.mod & KMOD_SHIFT){
+          if(app->selected>0) app->selected--;
+        }else{
+          if(app->selected<app->count-1) app->selected++;
+        }
+        break;
     }
   }
-
 }
 
-void render(AppState *app,Font font){
-  Vector2 mouse = GetMousePosition();
-  DrawTextEx(font, "MUDO", (Vector2){170,15}, 18, 1, WHITE);
+void drawText(SDL_Renderer *renderer,TTF_Font *font, const char *text,int x, int y, SDL_Color color){
+  SDL_Surface *surface = TTF_RenderUTF8_Blended(font, text, color);
+  SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+  SDL_Rect dst = {x,y,surface->w,surface->h};
+  SDL_FreeSurface(surface);
+  SDL_RenderCopy(renderer, texture, NULL, &dst);
+  SDL_DestroyTexture(texture);
+}
 
-  BeginScissorMode(0, 50, windowWidth, windowHeight-110);
+void render(AppState *app,SDL_Renderer *renderer,Fonts *fonts){
+
+  SDL_SetRenderDrawColor(renderer, BLACK.r, BLACK.g, BLACK.b, BLACK.a);
+  SDL_RenderClear(renderer);
+
+  drawText(renderer, fonts->large, "MUDO", 170, 15, WHITE);
+
+  SDL_RenderSetClipRect(renderer, &(SDL_Rect){0,50,windowWidth,windowHeight-110});
+
+  SDL_Point mouse; 
+  SDL_GetMouseState(&mouse.x, &mouse.y);
   for(int i = 0; i<app->count;i++){
     int y= (i*40)+50 - app->scrollOffset;
 
-    // state button
-    DrawRectangleRounded((Rectangle){10,y,65,30}, 0.4, 16, CheckCollisionPointRec(mouse, (Rectangle){10,y,65,30})? GRAY : DARKGRAY);
-    DrawRectangle(70, y, 5, 30, CheckCollisionPointRec(mouse, (Rectangle){10,y,65,30})?GRAY:DARKGRAY);
-    DrawTextEx(font,app->todos[i].done? "DONE" : "TODO",(Vector2){20,y+6}, 18,1, app->todos[i].done? ORANGE : WHITE);
+    SDL_Rect state_btn = {10,y,65,30};
+    SDL_SetRenderDrawColor(renderer, DARK_GRAY.r,DARK_GRAY.g,DARK_GRAY.b,DARK_GRAY.a);
+    SDL_RenderFillRect(renderer, &state_btn);
+    drawText(renderer, fonts->normal, app->todos[i].done? "DONE" : "TODO", 20, y+8,app->todos[i].done? RED :GREEN );
 
-    // lists
-    DrawRectangle(75, y, windowWidth-115, 30,(CheckCollisionPointRec(mouse,(Rectangle){75,y,windowWidth-115,30})||(i==app->selected)) ? DARKGRAY :(Color){25,25,25,255});
-    DrawTextEx(font,app->todos[i].text,(Vector2){80,y+6}, 18, 1, WHITE);
+    SDL_Rect item = {75,y,windowWidth-115,30};
+    if(i==app->selected){
+      SDL_SetRenderDrawColor(renderer, DARK_GRAY.r,DARK_GRAY.g,DARK_GRAY.b,DARK_GRAY.a);
+    }else{
+      SDL_SetRenderDrawColor(renderer, GRAY.r,GRAY.g,GRAY.b,GRAY.a);
+    }
+    SDL_RenderFillRect(renderer, &item);
+    drawText(renderer, fonts->normal, app->todos[i].text, 80, y+8, WHITE);
 
-    // state strike
     if( app->todos[i].done){
-      DrawRectangle(15,y+16, windowWidth-60, 1, MAROON);
+      SDL_Rect strike_line = {15,y+16, windowWidth-60, 1};
+      SDL_SetRenderDrawColor(renderer, RED.r,RED.g,RED.b,RED.a);
+      SDL_RenderFillRect(renderer, &strike_line);
     }
 
-    // delete button
-    DrawRectangleRounded((Rectangle){360,y,30,30}, 0.4, 16, CheckCollisionPointRec(mouse, (Rectangle){360,y,30,30})? GRAY : DARKGRAY);
-    DrawRectangle(360, y, 5, 30, CheckCollisionPointRec(mouse, (Rectangle){360,y,30,30})?GRAY:DARKGRAY);
-    DrawTextEx(font,"X",(Vector2){(Rectangle){360,y,30,30}.x+10, (Rectangle){360,y,30,30}.y+6}, 18, 1, WHITE);
-
+    SDL_Rect del_btn = {360,y,30,30};
+    SDL_SetRenderDrawColor(renderer, DARK_GRAY.r,DARK_GRAY.g,DARK_GRAY.b,DARK_GRAY.a);
+    SDL_RenderFillRect(renderer, &del_btn);
+    drawText(renderer, fonts->normal, "X", 370, y+8, RED);
   }
-  EndScissorMode();
+  SDL_RenderSetClipRect(renderer, NULL);
 
-  DrawRectangle(0, windowHeight-60, windowWidth, 60, (Color){25,25,25,255});
+  SDL_Rect text_box = {0,windowHeight-60,windowWidth,60};
+  SDL_SetRenderDrawColor(renderer, DARK_GRAY.r,DARK_GRAY.g,DARK_GRAY.b,DARK_GRAY.a);
+  SDL_RenderFillRect(renderer, &text_box);
+
   if (app->inputLen<=0) {
-    DrawTextEx(font,"enter todo...", (Vector2){30, windowHeight-40}, 18, 1, GRAY);
+    drawText(renderer, fonts->normal, "enter todo...", 30, windowHeight-40, WHITE);
+  }else{
+    drawText(renderer, fonts->normal, app->input, 30, windowHeight-40, WHITE);
   }
 
-  // done button
-  DrawTextEx(font,app->input,(Vector2){30,windowHeight-40}, 18, 1, WHITE);
-  DrawRectangle(0,windowHeight-61,windowWidth,1, GRAY);
-  DrawRectangle(339,windowHeight-61,1,60, GRAY);
-  DrawRectangle(340,windowHeight-60,60,60, CheckCollisionPointRec(mouse, (Rectangle){340,windowHeight -60,62,60})? DARKGRAY : BLACK);
-  DrawTextEx(font,"done", (Vector2){(Rectangle){340,windowHeight -60,62,60}.x+10, (Rectangle){340,windowHeight -60,62,60}.y+18}, 18, 1, WHITE);
+  SDL_Rect done_btn = {340,windowHeight -60,62,60};
+  SDL_SetRenderDrawColor(renderer, GRAY.r,GRAY.g,GRAY.b,GRAY.a);
+  SDL_RenderFillRect(renderer, &done_btn);
+  drawText(renderer, fonts->normal, "done", 350, windowHeight-40, WHITE);
 
+  SDL_RenderPresent(renderer);
 }
 
 int main() {
-  SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-  InitWindow(windowWidth, windowHeight, "MUDO");
-  SetTargetFPS(60);
+  if(SDL_Init(SDL_INIT_VIDEO) !=0) printf("SDL Init Failed: %s \n",SDL_GetError());
+  TTF_Init();
 
-  Font font = LoadFontEx("assets/fonts/Inter-Regular.ttf", 18,0,0);
+  Fonts fonts;
+  fonts.small = TTF_OpenFont("assets/fonts/Inter-Regular.ttf", 12);
+  fonts.normal = TTF_OpenFont("assets/fonts/Inter-Regular.ttf", 14);
+  fonts.large = TTF_OpenFont("assets/fonts/Inter-Regular.ttf", 18);
+
+  SDL_Window *window = SDL_CreateWindow("MUDO", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 400, 500, 0);
+  SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
   AppState app = {0};
   app.selected = -1;
   app.scrollOffset = 0;
 
-
   loadTodos(&app);
+  SDL_StartTextInput();
 
-  while (!WindowShouldClose()) {
-    handleInput(&app);
-    BeginDrawing();
-    ClearBackground(BLACK);
-    render(&app,font);
-    EndDrawing();
+  int running = 1;
+  while(running){
+    SDL_Event event;
+    while(SDL_PollEvent(&event)) {
+      handleInput(&app,&event);
+      if (event.type == SDL_QUIT) {
+        running = 0;
+      }
+    }
+    render(&app, renderer,&fonts);
   }
+
   for(int i=0;i< app.count;i++){
     free(app.todos[i].text);
   }
   free(app.todos);
-  UnloadFont(font);
-  CloseWindow();
+
+  TTF_CloseFont(fonts.small);
+  TTF_CloseFont(fonts.normal);
+  TTF_CloseFont(fonts.large);
+  TTF_Quit();
+
+  SDL_DestroyRenderer(renderer);
+  SDL_DestroyWindow(window);
+  SDL_Quit();
 }
