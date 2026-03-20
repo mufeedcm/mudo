@@ -25,8 +25,9 @@
 #include <wchar.h>
 
 static const SDL_Color WHITE      = {255,255,255,255};
-static const SDL_Color BLACK      = {0,0,0,255};
-static const SDL_Color GRAY       = {120,120,120,255};
+static const SDL_Color BLACK      = {30,30,30,255};
+static const SDL_Color PURE_BLACK = {0,0,0,255};
+static const SDL_Color GRAY       = {70,70,70,255};
 static const SDL_Color DARK_GRAY  = {40,40,40,255};
 static const SDL_Color RED        = {255,0,0,255};
 static const SDL_Color GREEN      = {0,255,0,255};
@@ -56,8 +57,8 @@ typedef struct {
 
 }Fonts;
 
-int windowHeight =  500;
-int windowWidth = 400;
+int contentWidth = 400;
+int contentHeight =  500;
 
 void saveTodos(AppState *app){
   char *home = getenv("HOME");
@@ -147,7 +148,7 @@ void handleInput(AppState *app, SDL_Event *event){
     for(int i = 0; i<app->count;i++){
       int y= (i*40)+50 - app->scrollOffset;
       SDL_Rect state_btn = {10,y,65,30};
-      SDL_Rect item = {75,y,windowWidth-115,30};
+      SDL_Rect item = {75,y,contentWidth-115,30};
       SDL_Rect del_btn = {360,y,30,30};
 
       if(SDL_PointInRect(&mouse,&state_btn)){
@@ -166,7 +167,7 @@ void handleInput(AppState *app, SDL_Event *event){
       }
     }
 
-    SDL_Rect done_btn = {340,windowHeight -60,62,60};
+    SDL_Rect done_btn = {340,contentHeight -60,62,60};
     if(SDL_PointInRect(&mouse,&done_btn)){
       if(app->inputLen >0){
         addTodo(app,app->input);
@@ -243,61 +244,71 @@ void drawText(SDL_Renderer *renderer,TTF_Font *font, const char *text,int x, int
   SDL_DestroyTexture(texture);
 }
 
-void render(AppState *app,SDL_Renderer *renderer,Fonts *fonts){
+void render(AppState *app,SDL_Window *window,SDL_Renderer *renderer,Fonts *fonts){
+  int w,h;
+  SDL_GetWindowSize(window, &w, &h);
 
-  SDL_SetRenderDrawColor(renderer, BLACK.r, BLACK.g, BLACK.b, BLACK.a);
+  int offsetX, offsetY;
+  offsetX = w>contentWidth ? (w - contentWidth)/2 : 0;
+  offsetY = h>contentHeight ? (h - contentHeight)/2 : 0;
+
+  SDL_SetRenderDrawColor(renderer, PURE_BLACK.r, PURE_BLACK.g, PURE_BLACK.b, PURE_BLACK.a);
   SDL_RenderClear(renderer);
 
-  drawText(renderer, fonts->large, "MUDO", 170, 15, WHITE);
+  SDL_Rect content_bg = {offsetX,offsetY,contentWidth,contentHeight};
+  SDL_SetRenderDrawColor(renderer, BLACK.r,BLACK.g,BLACK.b,BLACK.a);
+  SDL_RenderFillRect(renderer, &content_bg);
 
-  SDL_RenderSetClipRect(renderer, &(SDL_Rect){0,50,windowWidth,windowHeight-110});
+  drawText(renderer, fonts->large, "MUDO", offsetX+170,offsetY+15, WHITE);
+
+  SDL_RenderSetClipRect(renderer, &(SDL_Rect){offsetX,offsetY+50,contentWidth,contentHeight-110});
 
   SDL_Point mouse; 
   SDL_GetMouseState(&mouse.x, &mouse.y);
   for(int i = 0; i<app->count;i++){
     int y= (i*40)+50 - app->scrollOffset;
 
-    SDL_Rect state_btn = {10,y,65,30};
+    SDL_Rect state_btn = {offsetX+10,offsetY+y,65,30};
     SDL_SetRenderDrawColor(renderer, DARK_GRAY.r,DARK_GRAY.g,DARK_GRAY.b,DARK_GRAY.a);
     SDL_RenderFillRect(renderer, &state_btn);
-    drawText(renderer, fonts->normal, app->todos[i].done? "DONE" : "TODO", 20, y+8,app->todos[i].done? RED :GREEN );
+    drawText(renderer, fonts->normal, app->todos[i].done? "DONE" : "TODO", offsetX+20, offsetY+y+8,app->todos[i].done? RED :GREEN );
 
-    SDL_Rect item = {75,y,windowWidth-115,30};
+    SDL_Rect item = {offsetX+75,offsetY+y,contentWidth-115,30};
     if(i==app->selected){
       SDL_SetRenderDrawColor(renderer, DARK_GRAY.r,DARK_GRAY.g,DARK_GRAY.b,DARK_GRAY.a);
     }else{
       SDL_SetRenderDrawColor(renderer, GRAY.r,GRAY.g,GRAY.b,GRAY.a);
     }
     SDL_RenderFillRect(renderer, &item);
-    drawText(renderer, fonts->normal, app->todos[i].text, 80, y+8, WHITE);
+    drawText(renderer, fonts->normal, app->todos[i].text, offsetX+80, offsetY+(y+8), WHITE);
 
     if( app->todos[i].done){
-      SDL_Rect strike_line = {15,y+16, windowWidth-60, 1};
+      SDL_Rect strike_line = {offsetX+15,offsetY+(y+16), contentWidth-60, 1};
       SDL_SetRenderDrawColor(renderer, RED.r,RED.g,RED.b,RED.a);
       SDL_RenderFillRect(renderer, &strike_line);
     }
 
-    SDL_Rect del_btn = {360,y,30,30};
+    SDL_Rect del_btn = {offsetX+360,offsetY+y,30,30};
     SDL_SetRenderDrawColor(renderer, DARK_GRAY.r,DARK_GRAY.g,DARK_GRAY.b,DARK_GRAY.a);
     SDL_RenderFillRect(renderer, &del_btn);
-    drawText(renderer, fonts->normal, "X", 370, y+8, RED);
+    drawText(renderer, fonts->normal, "X", offsetX+370, offsetY+(y+8), RED);
   }
   SDL_RenderSetClipRect(renderer, NULL);
 
-  SDL_Rect text_box = {0,windowHeight-60,windowWidth,60};
+  SDL_Rect text_box = {offsetX,offsetY+(contentHeight-60),contentWidth,60};
   SDL_SetRenderDrawColor(renderer, DARK_GRAY.r,DARK_GRAY.g,DARK_GRAY.b,DARK_GRAY.a);
   SDL_RenderFillRect(renderer, &text_box);
 
   if (app->inputLen<=0) {
-    drawText(renderer, fonts->normal, "enter todo...", 30, windowHeight-40, WHITE);
+    drawText(renderer, fonts->normal, "enter todo...", offsetX+30, offsetY+(contentHeight-40), WHITE);
   }else{
-    drawText(renderer, fonts->normal, app->input, 30, windowHeight-40, WHITE);
+    drawText(renderer, fonts->normal, app->input, offsetX+30, offsetY+(contentHeight-40), WHITE);
   }
 
-  SDL_Rect done_btn = {340,windowHeight -60,62,60};
+  SDL_Rect done_btn = {offsetX+340,offsetY+(contentHeight -60),60,60};
   SDL_SetRenderDrawColor(renderer, GRAY.r,GRAY.g,GRAY.b,GRAY.a);
   SDL_RenderFillRect(renderer, &done_btn);
-  drawText(renderer, fonts->normal, "done", 350, windowHeight-40, WHITE);
+  drawText(renderer, fonts->normal, "done", offsetX+350, offsetY+(contentHeight-40), WHITE);
 
   SDL_RenderPresent(renderer);
 }
@@ -313,6 +324,8 @@ int main() {
 
   SDL_Window *window = SDL_CreateWindow("MUDO", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 400, 500, 0);
   SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+  SDL_SetWindowResizable(window, SDL_TRUE);
 
   AppState app = {0};
   app.selected = -1;
@@ -330,7 +343,7 @@ int main() {
         running = 0;
       }
     }
-    render(&app, renderer,&fonts);
+    render(&app,window, renderer,&fonts);
   }
 
   for(int i=0;i< app.count;i++){
