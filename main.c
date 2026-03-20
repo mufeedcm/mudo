@@ -18,11 +18,11 @@
 
 #include "SDL2/SDL.h"
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_video.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <wchar.h>
 
 static const SDL_Color WHITE      = {255,255,255,255};
 static const SDL_Color BLACK      = {30,30,30,255};
@@ -139,11 +139,20 @@ void loadTodos(AppState *app){
   }
 }
 
-void handleInput(AppState *app, SDL_Event *event){
+void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
 
   if(event->type == SDL_MOUSEBUTTONDOWN){
     SDL_Point mouse; 
     SDL_GetMouseState(&mouse.x, &mouse.y);
+
+  int w,h;
+  SDL_GetWindowSize(window, &w, &h);
+
+  int offsetX, offsetY;
+  offsetX = w>contentWidth ? (w - contentWidth)/2 : 0;
+  offsetY = h>contentHeight ? (h - contentHeight)/2 : 0;
+    mouse.x -= offsetX;
+    mouse.y -= offsetY;
 
     for(int i = 0; i<app->count;i++){
       int y= (i*40)+50 - app->scrollOffset;
@@ -263,8 +272,6 @@ void render(AppState *app,SDL_Window *window,SDL_Renderer *renderer,Fonts *fonts
 
   SDL_RenderSetClipRect(renderer, &(SDL_Rect){offsetX,offsetY+50,contentWidth,contentHeight-110});
 
-  SDL_Point mouse; 
-  SDL_GetMouseState(&mouse.x, &mouse.y);
   for(int i = 0; i<app->count;i++){
     int y= (i*40)+50 - app->scrollOffset;
 
@@ -338,7 +345,7 @@ int main() {
   while(running){
     SDL_Event event;
     while(SDL_PollEvent(&event)) {
-      handleInput(&app,&event);
+      handleInput(&app,window,&event);
       if (event.type == SDL_QUIT) {
         running = 0;
       }
