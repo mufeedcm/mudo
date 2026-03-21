@@ -143,6 +143,33 @@ void loadTodos(AppState *app){
   }
 }
 
+void ensureVisible(AppState *app){
+  if (app->selected<0) return;
+  int itemTop = app->selected*40;
+  int itemBottom = itemTop +40;
+
+  int viewTop = app->scrollOffset;
+  int viewBottom = app->scrollOffset + (contentHeight - 110);
+  
+  if(itemTop<viewTop){
+    app->scrollOffset = itemTop;
+  }else if(itemBottom>viewBottom){
+    app->scrollOffset = itemBottom - (contentHeight-110);
+  }
+
+  if(app->scrollOffset < 0){
+    app->scrollOffset =0;
+  }
+  int maxScroll = (app->count *40+50)-(contentHeight-110);
+  if(maxScroll<0){
+    maxScroll =0;
+  }
+  if(app->scrollOffset > maxScroll){
+    app->scrollOffset = maxScroll;
+  }
+
+}
+
 
 void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
 
@@ -175,6 +202,7 @@ void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
       }
       if(SDL_PointInRect(&mouse,&del_btn)){
         deleteTodo(app,i);
+        ensureVisible(app);
         break;
       }
     }
@@ -184,8 +212,10 @@ void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
       if(app->inputLen >0){
         addTodo(app,app->input);
         saveTodos(app);
+        app->selected = app->count-1;
         app->inputLen=0;
         app->input[0] = '\0';
+        ensureVisible(app);
       }
     }
   }
@@ -224,24 +254,29 @@ void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
         if(app->inputLen >0){
           addTodo(app,app->input);
           saveTodos(app);
+          app->selected = app->count-1;
           app->inputLen=0;
           app->input[0] = '\0';
+
+          ensureVisible(app);
         }
         break;
       case SDLK_DELETE:
         if(app->selected>=0){
           deleteTodo(app,app->selected);
-
+          ensureVisible(app);
         }
         break;
       case SDLK_DOWN:
         if(app->selected<app->count-1){
           app->selected++;
+          ensureVisible(app);
         }
         break;
       case SDLK_UP:
         if(app->selected>0){
           app->selected--;
+          ensureVisible(app);
         }
         break;
       case SDLK_TAB:
@@ -250,6 +285,7 @@ void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
         }else{
           if(app->selected<app->count-1) app->selected++;
         }
+        ensureVisible(app);
         break;
     }
   }
@@ -263,6 +299,7 @@ void drawText(SDL_Renderer *renderer,TTF_Font *font, const char *text,int x, int
   SDL_RenderCopy(renderer, texture, NULL, &dst);
   SDL_DestroyTexture(texture);
 }
+
 
 void render(AppState *app,SDL_Window *window,SDL_Renderer *renderer,Fonts *fonts){
   int w,h;
