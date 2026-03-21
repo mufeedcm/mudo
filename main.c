@@ -168,12 +168,17 @@ void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
         break;
       }
       if(SDL_PointInRect(&mouse,&item)){
-        app->selected = -1;
+        app->selected = i;
       }
       if(SDL_PointInRect(&mouse,&del_btn)){
-        app->selected =i;
-        deleteTodo(app,app->selected);
-        app->selected = -1;
+        deleteTodo(app,i);
+        if(app->count ==0){
+          app->selected = -1;
+        }else if (i>=app->count) {
+          app->selected = app->count -1;
+        }else{
+          app->selected = i;
+        }
         break;
       }
     }
@@ -230,7 +235,12 @@ void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
       case SDLK_DELETE:
         if(app->selected>=0){
           deleteTodo(app,app->selected);
-        }
+
+          if(app->count ==0){
+            app->selected = -1;
+          }else if ( app->selected>=app->count) {
+            app->selected = app->count -1;
+          }        }
         break;
       case SDLK_DOWN:
         if(app->selected<app->count-1){
@@ -303,7 +313,7 @@ void render(AppState *app,SDL_Window *window,SDL_Renderer *renderer,Fonts *fonts
 
     SDL_Rect item = {75,screenY,contentWidth-115,30};
     SDL_Rect item_draw = {offsetX+item.x,offsetY+item.y,item.w,item.h};
-    if((i==app->selected) || SDL_PointInRect(&mouse,&item)){
+    if((i==app->selected)||SDL_PointInRect(&mouse,&item)){
       SDL_SetRenderDrawColor(renderer, GRAY4.r,GRAY4.g,GRAY4.b,GRAY4.a);
     }else{
       SDL_SetRenderDrawColor(renderer, GRAY3.r,GRAY3.g,GRAY3.b,GRAY3.a);
