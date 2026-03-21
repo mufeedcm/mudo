@@ -17,6 +17,7 @@
  */
 
 #include "SDL2/SDL.h"
+#include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -58,6 +59,13 @@ typedef struct {
 
 }Fonts;
 
+typedef struct {
+  SDL_Point mouse;
+  int winW,winH;
+  int offsetX,offsetY;
+
+}UiContext;
+
 int contentWidth = 400;
 int contentHeight =  500;
 
@@ -80,23 +88,6 @@ void saveTodos(AppState *app){
   }
 }
 
-void deleteTodo(AppState *app,int item){
-  free (app->todos[item].text);
-  for(int i= item;i<app->count-1;i++){
-    app->todos[i] = app->todos[i+1];
-  }
-  (app->count)--;
-  if(app->count ==0){
-    app->selected = -1;
-  }else if ( item>=app->count) {
-    app->selected = app->count -1;
-  }else{ 
-    app->selected = item;
-  }
-
-  saveTodos(app);
-}
-
 void addTodo(AppState *app,const char *text){
   if(app->count>=app->capacity){
     int newCapacity = app->capacity==0?4:app->capacity*2;
@@ -112,7 +103,23 @@ void addTodo(AppState *app,const char *text){
   strcpy(app->todos[app->count].text,text);
   app->todos[app->count].done = false;
   (app->count)++;
+}
 
+void deleteTodo(AppState *app,int item){
+  free (app->todos[item].text);
+  for(int i= item;i<app->count-1;i++){
+    app->todos[i] = app->todos[i+1];
+  }
+  (app->count)--;
+  if(app->count ==0){
+    app->selected = -1;
+  }else if ( item>=app->count) {
+    app->selected = app->count -1;
+  }else{ 
+    app->selected = item;
+  }
+
+  saveTodos(app);
 }
 
 void loadTodos(AppState *app){
@@ -171,20 +178,10 @@ void ensureVisible(AppState *app){
 }
 
 
-void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
+void handleInput(AppState *app, SDL_Event *event,UiContext *ctx){
 
   if(event->type == SDL_MOUSEBUTTONDOWN){
-    SDL_Point mouse; 
-    SDL_GetMouseState(&mouse.x, &mouse.y);
-
-    int w,h;
-    SDL_GetWindowSize(window, &w, &h);
-    int offsetX, offsetY;
-    offsetX = w>contentWidth ? (w - contentWidth)/2 : 0;
-    offsetY = h>contentHeight ? (h - contentHeight)/2 : 0;
-
-    mouse.x -= offsetX;
-    mouse.y -= offsetY;
+    SDL_Point mouse = ctx->mouse;
 
     for(int i = 0; i<app->count;i++){
       int screenY= (i*40)+50 - app->scrollOffset;
@@ -301,36 +298,26 @@ void drawText(SDL_Renderer *renderer,TTF_Font *font, const char *text,int x, int
 }
 
 
-void render(AppState *app,SDL_Window *window,SDL_Renderer *renderer,Fonts *fonts){
-  int w,h;
-  SDL_GetWindowSize(window, &w, &h);
+void render(AppState *app,SDL_Renderer *renderer,Fonts *fonts,UiContext *ctx){
 
-  int offsetX, offsetY;
-  offsetX = w>contentWidth ? (w - contentWidth)/2 : 0;
-  offsetY = h>contentHeight ? (h - contentHeight)/2 : 0;
-
-  SDL_Point mouse; 
-  SDL_GetMouseState(&mouse.x, &mouse.y);
-
-  mouse.x -= offsetX;
-  mouse.y -= offsetY;
+  SDL_Point mouse = ctx->mouse;
 
   SDL_SetRenderDrawColor(renderer, PURE_BLACK.r, PURE_BLACK.g, PURE_BLACK.b, PURE_BLACK.a);
   SDL_RenderClear(renderer);
 
-  SDL_Rect content_bg = {offsetX,offsetY,contentWidth,contentHeight};
+  SDL_Rect content_bg = {ctx->offsetX,ctx->offsetY,contentWidth,contentHeight};
   SDL_SetRenderDrawColor(renderer, BLACK.r,BLACK.g,BLACK.b,BLACK.a);
   SDL_RenderFillRect(renderer, &content_bg);
 
-  drawText(renderer, fonts->large, "MUDO", offsetX+170,offsetY+15, WHITE);
+  drawText(renderer, fonts->large, "MUDO", ctx->offsetX+170,ctx->offsetY+15, WHITE);
 
-  SDL_RenderSetClipRect(renderer, &(SDL_Rect){offsetX,offsetY+50,contentWidth,contentHeight-110});
+  SDL_RenderSetClipRect(renderer, &(SDL_Rect){ctx->offsetX,ctx->offsetY+50,contentWidth,contentHeight-110});
 
   for(int i = 0; i<app->count;i++){
     int screenY= (i*40)+50 - app->scrollOffset;
 
     SDL_Rect state_btn = {10,screenY,65,30};
-    SDL_Rect state_btn_draw = {offsetX+state_btn.x,offsetY+state_btn.y,state_btn.w,state_btn.h};
+    SDL_Rect state_btn_draw = {ctx->offsetX+state_btn.x,ctx->offsetY+state_btn.y,state_btn.w,state_btn.h};
 
     if(SDL_PointInRect(&mouse,&state_btn)){
       SDL_SetRenderDrawColor(renderer, GRAY2.r,GRAY2.g,GRAY2.b,GRAY2.a);
@@ -338,55 +325,55 @@ void render(AppState *app,SDL_Window *window,SDL_Renderer *renderer,Fonts *fonts
       SDL_SetRenderDrawColor(renderer, GRAY1.r,GRAY1.g,GRAY1.b,GRAY1.a);
     }
     SDL_RenderFillRect(renderer, &state_btn_draw);
-    drawText(renderer, fonts->normal, app->todos[i].done? "DONE" : "TODO", offsetX+20, offsetY+screenY+8,app->todos[i].done? RED :GREEN );
+    drawText(renderer, fonts->normal, app->todos[i].done? "DONE" : "TODO", ctx->offsetX+20, ctx->offsetY+screenY+8,app->todos[i].done? RED :GREEN );
 
     SDL_Rect item = {75,screenY,contentWidth-115,30};
-    SDL_Rect item_draw = {offsetX+item.x,offsetY+item.y,item.w,item.h};
+    SDL_Rect item_draw = {ctx->offsetX+item.x,ctx->offsetY+item.y,item.w,item.h};
     if((i==app->selected)||SDL_PointInRect(&mouse,&item)){
       SDL_SetRenderDrawColor(renderer, GRAY4.r,GRAY4.g,GRAY4.b,GRAY4.a);
     }else{
       SDL_SetRenderDrawColor(renderer, GRAY2.r,GRAY2.g,GRAY2.b,GRAY2.a);
     }
     SDL_RenderFillRect(renderer, &item_draw);
-    drawText(renderer, fonts->normal, app->todos[i].text, offsetX+80, offsetY+(screenY+8), WHITE);
+    drawText(renderer, fonts->normal, app->todos[i].text, ctx->offsetX+80, ctx->offsetY+(screenY+8), WHITE);
 
     if( app->todos[i].done){
-      SDL_Rect strike_line = {offsetX+15,offsetY+(screenY+16), contentWidth-60, 1};
+      SDL_Rect strike_line = {ctx->offsetX+15,ctx->offsetY+(screenY+16), contentWidth-60, 1};
       SDL_SetRenderDrawColor(renderer, RED.r,RED.g,RED.b,RED.a);
       SDL_RenderFillRect(renderer, &strike_line);
     }
 
     SDL_Rect del_btn = {360,screenY,30,30};
-    SDL_Rect del_btn_draw = {offsetX+del_btn.x,offsetY+del_btn.y,del_btn.w,del_btn.h};
+    SDL_Rect del_btn_draw = {ctx->offsetX+del_btn.x,ctx->offsetY+del_btn.y,del_btn.w,del_btn.h};
     if(SDL_PointInRect(&mouse,&del_btn)){
       SDL_SetRenderDrawColor(renderer, GRAY2.r,GRAY2.g,GRAY2.b,GRAY2.a);
     }else{
       SDL_SetRenderDrawColor(renderer, GRAY1.r,GRAY1.g,GRAY1.b,GRAY1.a);
     }
     SDL_RenderFillRect(renderer, &del_btn_draw);
-    drawText(renderer, fonts->normal, "X", offsetX+370, offsetY+(screenY+8), RED);
+    drawText(renderer, fonts->normal, "X", ctx->offsetX+370, ctx->offsetY+(screenY+8), RED);
   }
   SDL_RenderSetClipRect(renderer, NULL);
 
-  SDL_Rect text_box = {offsetX,offsetY+(contentHeight-60),contentWidth,60};
+  SDL_Rect text_box = {ctx->offsetX,ctx->offsetY+(contentHeight-60),contentWidth,60};
   SDL_SetRenderDrawColor(renderer, GRAY1.r,GRAY1.g,GRAY1.b,GRAY1.a);
   SDL_RenderFillRect(renderer, &text_box);
 
   if (app->inputLen<=0) {
-    drawText(renderer, fonts->normal, "enter todo...", offsetX+30, offsetY+(contentHeight-40), WHITE);
+    drawText(renderer, fonts->normal, "enter todo...", ctx->offsetX+30, ctx->offsetY+(contentHeight-40), WHITE);
   }else{
-    drawText(renderer, fonts->normal, app->input, offsetX+30, offsetY+(contentHeight-40), WHITE);
+    drawText(renderer, fonts->normal, app->input, ctx->offsetX+30, ctx->offsetY+(contentHeight-40), WHITE);
   }
 
   SDL_Rect done_btn = {340,(contentHeight -60),60,60};
-  SDL_Rect done_btn_draw = {offsetX+done_btn.x,offsetY+done_btn.y,done_btn.w,done_btn.h};
+  SDL_Rect done_btn_draw = {ctx->offsetX+done_btn.x,ctx->offsetY+done_btn.y,done_btn.w,done_btn.h};
   if(SDL_PointInRect(&mouse,&done_btn)){
     SDL_SetRenderDrawColor(renderer, GRAY4.r,GRAY4.g,GRAY4.b,GRAY4.a);
   }else{
     SDL_SetRenderDrawColor(renderer, GRAY2.r,GRAY2.g,GRAY2.b,GRAY2.a);
   }
   SDL_RenderFillRect(renderer, &done_btn_draw);
-  drawText(renderer, fonts->normal, "done", offsetX+350, offsetY+(contentHeight-40), WHITE);
+  drawText(renderer, fonts->normal, "done", ctx->offsetX+350, ctx->offsetY+(contentHeight-40), WHITE);
 
   SDL_RenderPresent(renderer);
 }
@@ -414,14 +401,27 @@ int main() {
 
   int running = 1;
   while(running){
+
     SDL_Event event;
+    UiContext ctx;
+
+    SDL_GetMouseState(&ctx.mouse.x, &ctx.mouse.y);
+    SDL_GetWindowSize(window, &ctx.winW, &ctx.winH);
+
+    ctx.offsetX = ctx.winW>contentWidth ? (ctx.winW - contentWidth)/2 : 0;
+    ctx.offsetY = ctx.winH>contentHeight ? (ctx.winH - contentHeight)/2 : 0;
+
+    ctx.mouse.x -= ctx.offsetX;
+    ctx.mouse.y -= ctx.offsetY;
+
+
     while(SDL_PollEvent(&event)) {
-      handleInput(&app,window,&event);
+      handleInput(&app,&event,&ctx);
       if (event.type == SDL_QUIT) {
         running = 0;
       }
     }
-    render(&app,window, renderer,&fonts);
+    render(&app, renderer,&fonts,&ctx);
   }
 
   for(int i=0;i< app.count;i++){
