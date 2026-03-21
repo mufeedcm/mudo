@@ -140,6 +140,7 @@ void loadTodos(AppState *app){
   }
 }
 
+
 void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
 
   if(event->type == SDL_MOUSEBUTTONDOWN){
@@ -156,10 +157,10 @@ void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
     mouse.y -= offsetY;
 
     for(int i = 0; i<app->count;i++){
-      int y= (i*40)+50 - app->scrollOffset;
-      SDL_Rect state_btn = {10,y,65,30};
-      SDL_Rect item = {75,y,contentWidth-115,30};
-      SDL_Rect del_btn = {360,y,30,30};
+      int screenY= (i*40)+50 - app->scrollOffset;
+      SDL_Rect state_btn = {10,screenY,65,30};
+      SDL_Rect item = {75,screenY,contentWidth-115,30};
+      SDL_Rect del_btn = {360,screenY,30,30};
 
       if(SDL_PointInRect(&mouse,&state_btn)){
         app->todos[i].done = !app->todos[i].done;
@@ -189,8 +190,15 @@ void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
   }
   if(event->type==SDL_MOUSEWHEEL){
     app->scrollOffset -= event->wheel.y*20;
-    if(app->scrollOffset <0){
-      app->scrollOffset = 0;
+    if(app->scrollOffset < 0){
+      app->scrollOffset =0;
+    }
+    int maxScroll = (app->count *40+50)-(contentHeight-110);
+    if(maxScroll<0){
+      maxScroll =0;
+    }
+    if(app->scrollOffset > maxScroll){
+      app->scrollOffset = maxScroll;
     }
   }
 
@@ -280,9 +288,9 @@ void render(AppState *app,SDL_Window *window,SDL_Renderer *renderer,Fonts *fonts
   SDL_RenderSetClipRect(renderer, &(SDL_Rect){offsetX,offsetY+50,contentWidth,contentHeight-110});
 
   for(int i = 0; i<app->count;i++){
-    int y= (i*40)+50 - app->scrollOffset;
+    int screenY= (i*40)+50 - app->scrollOffset;
 
-    SDL_Rect state_btn = {10,y,65,30};
+    SDL_Rect state_btn = {10,screenY,65,30};
     SDL_Rect state_btn_draw = {offsetX+state_btn.x,offsetY+state_btn.y,state_btn.w,state_btn.h};
 
     if(SDL_PointInRect(&mouse,&state_btn)){
@@ -291,9 +299,9 @@ void render(AppState *app,SDL_Window *window,SDL_Renderer *renderer,Fonts *fonts
       SDL_SetRenderDrawColor(renderer, GRAY1.r,GRAY1.g,GRAY1.b,GRAY1.a);
     }
     SDL_RenderFillRect(renderer, &state_btn_draw);
-    drawText(renderer, fonts->normal, app->todos[i].done? "DONE" : "TODO", offsetX+20, offsetY+y+8,app->todos[i].done? RED :GREEN );
+    drawText(renderer, fonts->normal, app->todos[i].done? "DONE" : "TODO", offsetX+20, offsetY+screenY+8,app->todos[i].done? RED :GREEN );
 
-    SDL_Rect item = {75,y,contentWidth-115,30};
+    SDL_Rect item = {75,screenY,contentWidth-115,30};
     SDL_Rect item_draw = {offsetX+item.x,offsetY+item.y,item.w,item.h};
     if((i==app->selected) || SDL_PointInRect(&mouse,&item)){
       SDL_SetRenderDrawColor(renderer, GRAY4.r,GRAY4.g,GRAY4.b,GRAY4.a);
@@ -301,15 +309,15 @@ void render(AppState *app,SDL_Window *window,SDL_Renderer *renderer,Fonts *fonts
       SDL_SetRenderDrawColor(renderer, GRAY3.r,GRAY3.g,GRAY3.b,GRAY3.a);
     }
     SDL_RenderFillRect(renderer, &item_draw);
-    drawText(renderer, fonts->normal, app->todos[i].text, offsetX+80, offsetY+(y+8), WHITE);
+    drawText(renderer, fonts->normal, app->todos[i].text, offsetX+80, offsetY+(screenY+8), WHITE);
 
     if( app->todos[i].done){
-      SDL_Rect strike_line = {offsetX+15,offsetY+(y+16), contentWidth-60, 1};
+      SDL_Rect strike_line = {offsetX+15,offsetY+(screenY+16), contentWidth-60, 1};
       SDL_SetRenderDrawColor(renderer, RED.r,RED.g,RED.b,RED.a);
       SDL_RenderFillRect(renderer, &strike_line);
     }
 
-    SDL_Rect del_btn = {360,y,30,30};
+    SDL_Rect del_btn = {360,screenY,30,30};
     SDL_Rect del_btn_draw = {offsetX+del_btn.x,offsetY+del_btn.y,del_btn.w,del_btn.h};
     if(SDL_PointInRect(&mouse,&del_btn)){
       SDL_SetRenderDrawColor(renderer, GRAY2.r,GRAY2.g,GRAY2.b,GRAY2.a);
@@ -317,7 +325,7 @@ void render(AppState *app,SDL_Window *window,SDL_Renderer *renderer,Fonts *fonts
       SDL_SetRenderDrawColor(renderer, GRAY1.r,GRAY1.g,GRAY1.b,GRAY1.a);
     }
     SDL_RenderFillRect(renderer, &del_btn_draw);
-    drawText(renderer, fonts->normal, "X", offsetX+370, offsetY+(y+8), RED);
+    drawText(renderer, fonts->normal, "X", offsetX+370, offsetY+(screenY+8), RED);
   }
   SDL_RenderSetClipRect(renderer, NULL);
 
