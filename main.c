@@ -86,11 +86,14 @@ void deleteTodo(AppState *app,int item){
     app->todos[i] = app->todos[i+1];
   }
   (app->count)--;
-  if(app->count==0){
-    item=-1;
-  }else if(item>=app->count){
-    item=app->count-1;
+  if(app->count ==0){
+    app->selected = -1;
+  }else if ( item>=app->count) {
+    app->selected = app->count -1;
+  }else{ 
+    app->selected = item;
   }
+
   saveTodos(app);
 }
 
@@ -172,13 +175,6 @@ void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
       }
       if(SDL_PointInRect(&mouse,&del_btn)){
         deleteTodo(app,i);
-        if(app->count ==0){
-          app->selected = -1;
-        }else if (i>=app->count) {
-          app->selected = app->count -1;
-        }else{
-          app->selected = i;
-        }
         break;
       }
     }
@@ -236,11 +232,7 @@ void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
         if(app->selected>=0){
           deleteTodo(app,app->selected);
 
-          if(app->count ==0){
-            app->selected = -1;
-          }else if ( app->selected>=app->count) {
-            app->selected = app->count -1;
-          }        }
+        }
         break;
       case SDLK_DOWN:
         if(app->selected<app->count-1){
