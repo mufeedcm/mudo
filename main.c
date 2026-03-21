@@ -224,7 +224,7 @@ void handleInput(AppState *app,SDL_Window *window, SDL_Event *event){
     if(app->scrollOffset < 0){
       app->scrollOffset =0;
     }
-    int maxScroll = (app->count *40+50)-(contentHeight-110);
+    int maxScroll = (app->count *40+50)-(contentHeight-60);
     if(maxScroll<0){
       maxScroll =0;
     }
@@ -345,7 +345,7 @@ void render(AppState *app,SDL_Window *window,SDL_Renderer *renderer,Fonts *fonts
     if((i==app->selected)||SDL_PointInRect(&mouse,&item)){
       SDL_SetRenderDrawColor(renderer, GRAY4.r,GRAY4.g,GRAY4.b,GRAY4.a);
     }else{
-      SDL_SetRenderDrawColor(renderer, GRAY3.r,GRAY3.g,GRAY3.b,GRAY3.a);
+      SDL_SetRenderDrawColor(renderer, GRAY2.r,GRAY2.g,GRAY2.b,GRAY2.a);
     }
     SDL_RenderFillRect(renderer, &item_draw);
     drawText(renderer, fonts->normal, app->todos[i].text, offsetX+80, offsetY+(screenY+8), WHITE);
@@ -383,7 +383,7 @@ void render(AppState *app,SDL_Window *window,SDL_Renderer *renderer,Fonts *fonts
   if(SDL_PointInRect(&mouse,&done_btn)){
     SDL_SetRenderDrawColor(renderer, GRAY4.r,GRAY4.g,GRAY4.b,GRAY4.a);
   }else{
-    SDL_SetRenderDrawColor(renderer, GRAY3.r,GRAY3.g,GRAY3.b,GRAY3.a);
+    SDL_SetRenderDrawColor(renderer, GRAY2.r,GRAY2.g,GRAY2.b,GRAY2.a);
   }
   SDL_RenderFillRect(renderer, &done_btn_draw);
   drawText(renderer, fonts->normal, "done", offsetX+350, offsetY+(contentHeight-40), WHITE);
