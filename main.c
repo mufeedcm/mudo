@@ -17,7 +17,9 @@
  */
 
 #include "SDL2/SDL.h"
+#include <SDL2/SDL_filesystem.h>
 #include <SDL2/SDL_rect.h>
+#include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -69,13 +71,37 @@ typedef struct {
 int contentWidth = 400;
 int contentHeight =  500;
 
+const char *getSavePath(){
+  static char path[1024];
+
+  char *base = SDL_GetPrefPath("mufeedcm","mudo");
+  if(base){
+    snprintf(path, sizeof(path), "%s%s",base,"todos.txt");
+    SDL_free(base);
+  }else{
+    snprintf(path, sizeof(path), "todos.txt");
+  }
+  return  path;
+}
+
+const char *getAssetPath(const char *file){
+  static char path[1024];
+
+  char *base = SDL_GetBasePath();
+  if(base){
+    snprintf(path, sizeof(path), "%s%s",base,file);
+    SDL_free(base);
+  }else{
+    snprintf(path, sizeof(path),"%s",file);
+  }
+  return  path;
+}
+
+
+
 void saveTodos(AppState *app){
-  char *home = getenv("HOME");
-  if(!home){return;}
-  char path[512];
-  snprintf(path, sizeof(path), "%s/.mudo.txt",home);
   FILE* file;
-  file = fopen(path,"w");
+  file = fopen(getSavePath(),"w");
   if(file!=NULL){
     for(int i=0; i< app->count;i++){
       fprintf(file,"%s %s\n",
@@ -123,12 +149,8 @@ void deleteTodo(AppState *app,int item){
 }
 
 void loadTodos(AppState *app){
-  char *home = getenv("HOME");
-  if(!home){return;}
-  char path[512];
-  snprintf(path, sizeof(path), "%s/.mudo.txt",home);
   FILE* file;
-  file = fopen(path,"r");
+  file = fopen(getSavePath(),"r");
   char buffer[1024];
 
   if(file!=NULL){
@@ -383,9 +405,15 @@ int main() {
   TTF_Init();
 
   Fonts fonts;
-  fonts.small = TTF_OpenFont("assets/fonts/Inter-Regular.ttf", 12);
-  fonts.normal = TTF_OpenFont("assets/fonts/Inter-Regular.ttf", 14);
-  fonts.large = TTF_OpenFont("assets/fonts/Inter-Regular.ttf", 18);
+  const char *fontPath = getAssetPath("assets/fonts/Inter-Regular.ttf");
+  fonts.small = TTF_OpenFont(fontPath, 12);
+  fonts.normal= TTF_OpenFont(fontPath, 14);
+  fonts.large = TTF_OpenFont(fontPath, 18);
+
+  if(!fonts.small|| !fonts.normal || !fonts.large){
+    printf("font failed to load : %s\n",TTF_GetError());
+    return 1;
+  }
 
   SDL_Window *window = SDL_CreateWindow("MUDO", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 400, 500, 0);
   SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
