@@ -400,7 +400,7 @@ void render(AppState *app,SDL_Renderer *renderer,Fonts *fonts,UiContext *ctx){
   SDL_RenderPresent(renderer);
 }
 
-int main() {
+int main(int argc, char *argv[]) {
   if(SDL_Init(SDL_INIT_VIDEO) !=0) printf("SDL Init Failed: %s \n",SDL_GetError());
   TTF_Init();
 
