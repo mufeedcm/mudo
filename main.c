@@ -15,11 +15,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>. 
  */
+#ifdef __EMSCRIPTEN__
+#include <emscripten/emscripten.h>
+#endif
 
 #include "SDL2/SDL.h"
-#include <SDL2/SDL_filesystem.h>
-#include <SDL2/SDL_rect.h>
-#include <SDL2/SDL_stdinc.h>
 #include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -70,6 +70,11 @@ typedef struct {
 
 int contentWidth = 400;
 int contentHeight =  500;
+
+SDL_Window *window;
+SDL_Renderer *renderer;
+Fonts fonts;
+AppState app = {0};
 
 const char *getSavePath(){
   static char path[1024];
@@ -400,36 +405,7 @@ void render(AppState *app,SDL_Renderer *renderer,Fonts *fonts,UiContext *ctx){
   SDL_RenderPresent(renderer);
 }
 
-int main(int argc, char *argv[]) {
-  if(SDL_Init(SDL_INIT_VIDEO) !=0) printf("SDL Init Failed: %s \n",SDL_GetError());
-  TTF_Init();
-
-  Fonts fonts;
-  const char *fontPath = getAssetPath("assets/fonts/Inter-Regular.ttf");
-  fonts.small = TTF_OpenFont(fontPath, 12);
-  fonts.normal= TTF_OpenFont(fontPath, 14);
-  fonts.large = TTF_OpenFont(fontPath, 18);
-
-  if(!fonts.small|| !fonts.normal || !fonts.large){
-    printf("font failed to load : %s\n",TTF_GetError());
-    return 1;
-  }
-
-  SDL_Window *window = SDL_CreateWindow("MUDO", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 400, 500, 0);
-  SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
-
-  SDL_SetWindowResizable(window, SDL_TRUE);
-
-  AppState app = {0};
-  app.selected = -1;
-  app.scrollOffset = 0;
-
-  loadTodos(&app);
-  SDL_StartTextInput();
-
-  int running = 1;
-  while(running){
-
+void main_loop(void){
     SDL_Event event;
     UiContext ctx;
 
@@ -446,11 +422,47 @@ int main(int argc, char *argv[]) {
     while(SDL_PollEvent(&event)) {
       handleInput(&app,&event,&ctx);
       if (event.type == SDL_QUIT) {
-        running = 0;
+        #ifndef __EMSCRIPTEN__
+        exit(0);
+        #endif 
       }
     }
     render(&app, renderer,&fonts,&ctx);
+
+}
+
+int main(int argc, char *argv[]) {
+  if(SDL_Init(SDL_INIT_VIDEO) !=0) printf("SDL Init Failed: %s \n",SDL_GetError());
+  TTF_Init();
+
+  const char *fontPath = getAssetPath("assets/fonts/Inter-Regular.ttf");
+  fonts.small = TTF_OpenFont(fontPath, 12);
+  fonts.normal= TTF_OpenFont(fontPath, 14);
+  fonts.large = TTF_OpenFont(fontPath, 18);
+
+  if(!fonts.small|| !fonts.normal || !fonts.large){
+    printf("font failed to load : %s\n",TTF_GetError());
+    return 1;
   }
+  window = SDL_CreateWindow("MUDO", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 400, 500, 0);
+  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+  SDL_SetWindowResizable(window, SDL_TRUE);
+
+  app.selected = -1;
+  app.scrollOffset = 0;
+
+  loadTodos(&app);
+  SDL_StartTextInput();
+
+#ifndef __EMSCRIPTEN__
+  int running = 1;
+  while(running){
+    main_loop();
+  }
+#else
+  emscripten_set_main_loop(main_loop,0,1);
+#endif
 
   for(int i=0;i< app.count;i++){
     free(app.todos[i].text);
