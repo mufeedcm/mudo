@@ -15,6 +15,7 @@
  * You should have received a copy of the GNU General Public License
  * along with this program. If not, see <https://www.gnu.org/licenses/>. 
  */
+#include <SDL2/SDL_rect.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
 #endif
@@ -33,6 +34,7 @@ static const SDL_Color GRAY1      = {40,40,40,255};
 static const SDL_Color GRAY2      = {50,50,50,255};
 static const SDL_Color GRAY3      = {60,60,60,255};
 static const SDL_Color GRAY4      = {70,70,70,255};
+static const SDL_Color GRAY5      = {120,120,120,255};
 static const SDL_Color RED        = {255,0,0,255};
 static const SDL_Color GREEN      = {0,255,0,255};
 
@@ -326,7 +328,7 @@ void drawText(SDL_Renderer *renderer,TTF_Font *font, const char *text,int x, int
 
 
 void render(AppState *app,SDL_Renderer *renderer,Fonts *fonts,UiContext *ctx){
-
+  bool showCursor = (SDL_GetTicks() / 500) % 2;
   SDL_Point mouse = ctx->mouse;
 
   SDL_SetRenderDrawColor(renderer, PURE_BLACK.r, PURE_BLACK.g, PURE_BLACK.b, PURE_BLACK.a);
@@ -387,9 +389,21 @@ void render(AppState *app,SDL_Renderer *renderer,Fonts *fonts,UiContext *ctx){
   SDL_RenderFillRect(renderer, &text_box);
 
   if (app->inputLen<=0) {
-    drawText(renderer, fonts->normal, "enter todo...", ctx->offsetX+30, ctx->offsetY+(contentHeight-40), WHITE);
+    drawText(renderer, fonts->normal, "enter todo...", ctx->offsetX+30, ctx->offsetY+(contentHeight-40), GRAY5);
+    if(showCursor){
+      SDL_Rect cursor = {(ctx->offsetX+30),(ctx->offsetY) + (contentHeight - 40),1,17};
+      SDL_SetRenderDrawColor(renderer, WHITE.r,WHITE.g,WHITE.b,WHITE.a);
+      SDL_RenderFillRect(renderer,&cursor);
+    }
   }else{
     drawText(renderer, fonts->normal, app->input, ctx->offsetX+30, ctx->offsetY+(contentHeight-40), WHITE);
+    if(showCursor){
+      int textW,textH;
+      TTF_SizeText(fonts->normal, app->input, &textW, &textH);
+      SDL_Rect cursor = {(ctx->offsetX+30)+textW,(ctx->offsetY) + (contentHeight - 40),1,textH};
+      SDL_SetRenderDrawColor(renderer, WHITE.r,WHITE.g,WHITE.b,WHITE.a);
+      SDL_RenderFillRect(renderer,&cursor);
+    }
   }
 
   SDL_Rect done_btn = {340,(contentHeight -60),60,60};
